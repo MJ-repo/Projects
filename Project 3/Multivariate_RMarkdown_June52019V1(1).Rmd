@@ -1,0 +1,395 @@
+---
+title: 'P-MHD: Multivariate Methods'
+author: "Dam, Nsoh Tanih(1850242) | Juachon, Maria Joanna (1849785)|Kamau, Njeri (1747614)|Kirezi, Beatrice|Okafor, Chinenye Innocent(185739)"
+date: "5 June 2019"
+output:
+  word_document: default
+  html_document:
+    df_print: paged
+  pdf_document: default
+mainfont: Arial
+header-includes: \usepackage{amsmath}
+fontsize: 14pt
+---
+
+###Overview
+
+Because of its great geographical extent, Canada has a wide variety of climates, and this can be readily seen in differences in precipitation patterns across the country. The objective of this project is to determine the differences and similarities in these patterns of selected cities across Canada (e.g. is there overall more rainfall in Western Canada, or less rain in summer?) The data available contains the average daily rainfall (mm/day) for the 365 days in the year for 35 cities. Extra information about the cities, the region they belong to and their coordinates is also available and is looked into.
+
+
+#Data Collection
+
+We have data on avarage daily rainfall (mm/day) for the 365 days in the year and for 35 Canadian cities.
+
+
+```{r include=FALSE}
+###################################################
+###############Data Preparation####################
+###################################################
+load("CanadianWeather.rda")
+da<-CanadianWeather[[1]]
+
+
+#Average Daily Rainfall (mm/day) for 365 days, 35 Canadian Cities
+da<-da[,,"Precipitation.mm"] # precipitation data
+head(da)
+colnames(da)
+```
+
+```{r}
+str(da)
+```
+The data set also contains extra information about the cities. For example, the regions, provinces and the coordinates are included.
+```{r include=FALSE}
+#City, Region, Province, Latitude, Longitude (35x5 matrix)
+MetaData<-data.frame(city=colnames(da), region=CanadianWeather$region, province=CanadianWeather$province, coord=CanadianWeather$coordinates)
+head(MetaData)
+```
+
+```{r}
+str(MetaData)
+```
+
+
+#Data Preparation
+
+###Functional Data Analysis
+
+Functional Data Analysis (FDA) is used to first convert the 365 data entries for each city to a single function. Thus each city will have its set of $q$ parameter estimates, and thus an $35\times q$ data matrix can be constructed. These parameter estimates form now the input for the MDS. 
+
+The statistical model for $Y_i(t_{ij})$,
+\[
+Y_i(t_{ij}) = \sum_{k=0}^m \theta_{ik} \phi_k(t_{ij}) + \varepsilon_{ij} 
+\]
+or
+\[
+Y_i(t_{ij}) = \sum_{k=0}^m \theta_{ik} x_{ijk} + \varepsilon_{ij}.
+\]
+Let $Y_i(t)$ denote the outcome of observation $i=1,\ldots, 35$ (here: average daily rainfall) at time $t\in [1,365]$. For observation $i$ we have data on times $t_{ij}$, $j=1,\ldots, p_i$. For a given $i$, this has the structure of a linear regression model with outcomes $Y_i(t_{ij})$, $j=1,\ldots, n$, and $q=m+1$ regressors $x_{ijk}$.
+
+The statistical model for city $i$ in matrix notation is given as: 
+\[
+\boldsymbol{Y}_i = \boldsymbol{\theta}_i^t\boldsymbol{X}_i+\boldsymbol{\varepsilon}_i
+\]
+with $\boldsymbol{Y}_i$ the vector with the outcomes of observation $i$ (one for each day $t_{ij}$),
+$\boldsymbol{\theta}_i$ the vector with the $\theta_{ik}$ (one for each basis function $k$), $\boldsymbol{X}_i$ the matrix with the $x_{ijk}$ (days $j$ in the rows, basis function index $k$ in columns), and $\boldsymbol{\varepsilon}_i$ the vector with the i.i.d. error terms. 
+
+The parameters $\theta_{ik}$ can be estimated by means of least squares and these can be used to plot the fitted function. One example is shown below, for Ottawa as the capital city of Canada. 
+
+
+```{r echo=FALSE}
+par(mfrow=c(2,2))
+# Using the polynomial basis functions up to degree 5
+
+days<-1:365
+days<-(days-min(days))/(diff(range(days))) # rescaling to [0,1]
+phi<-poly(days,degree=5)
+
+# estimation of the theta parameters for Vancouver
+m.Ottawa<-lm(da[,"Ottawa"]~phi)
+
+# plot of fitted function
+plot(1:365,da[,"Ottawa"],main="Ottawa (m=5)", xlab="day", ylab="precipitation (mm/day)")
+lines(1:365,m.Ottawa$fitted.values,type="l", col=2)
+
+# Using the polynomial basis functions up to degree 10
+
+days<-1:365
+days<-(days-min(days))/(diff(range(days))) # rescaling to [0,1]
+phi<-poly(days,degree=10)
+
+# estimation of the theta parameters for Vancouver
+m.Ottawa<-lm(da[,"Ottawa"]~phi)
+
+# plot of fitted function
+plot(1:365,da[,"Ottawa"],main="Ottawa (m=10)", xlab="day", ylab="precipitation (mm/day)")
+lines(1:365,m.Ottawa$fitted.values,type="l", col=2)
+
+# Using the polynomial basis functions up to degree 15
+
+days<-1:365
+days<-(days-min(days))/(diff(range(days))) # rescaling to [0,1]
+phi<-poly(days,degree=15)
+
+# estimation of the theta parameters for Vancouver
+m.Ottawa<-lm(da[,"Ottawa"]~phi)
+
+# plot of fitted function
+plot(1:365,da[,"Ottawa"],main="Ottawa (m=15)", xlab="day", ylab="precipitation (mm/day)")
+lines(1:365,m.Ottawa$fitted.values,type="l", col=2)
+
+# Using the polynomial basis functions up to degree 20
+
+days<-1:365
+days<-(days-min(days))/(diff(range(days))) # rescaling to [0,1]
+phi<-poly(days,degree=20)
+
+# estimation of the theta parameters for Vancouver
+m.Ottawa<-lm(da[,"Ottawa"]~phi)
+
+# plot of fitted function
+plot(1:365,da[,"Ottawa"],main="Ottawa (m=20)", xlab="day", ylab="precipitation (mm/day)")
+lines(1:365,m.Ottawa$fitted.values,type="l", col=2)
+```
+
+
+The choice of m is based on the comparison of RSquared for each fitted function with m from 1 to 20, for each city. The largest m which shows significant contribution taking into account all of the cities is chosen. The plot below shows that there has steep/increase until m=18. 
+
+```{r include=FALSE}
+#Check the rsquare
+for (a in 1:20) {
+  days<-1:365
+  days<-(days-min(days))/(diff(range(days))) # rescaling to [0,1]
+  phi<-poly(days,degree=a)
+  dim(phi)
+  for (i in 1:dim(da)[2]){
+    # estimation of the theta parameters for Vancouver
+    m.i<-lm(da[,i]~phi)
+    summary(m.i)
+
+    if (i==1){
+      dfrsqd <- data.frame(City=colnames(da)[i],R2=summary(m.i)$r.squared*100)
+    }else {
+      dfrsqd <-rbind(dfrsqd,data.frame(City=colnames(da)[i],R2=summary(m.i)$r.squared*100))
+    }
+  }
+  if (a==1){
+    dfrsqd_f<-dfrsqd
+  }
+  else{
+    dfrsqd_f<-cbind(dfrsqd_f,R2=dfrsqd[,2])
+  }
+}
+
+#Contains all Rsquared to check which m to get
+colnames(dfrsqd_f)=c("City","R1","R2","R3","R4","R5","R6","R7","R8","R9","R10","R11","R12","R13","R14","R15","R16","R17","R18","R19","R20")
+dfrsqd_f2<-as.data.frame(t(dfrsqd_f[,-1]))
+colnames(dfrsqd_f2)=dfrsqd_f$City
+str(dfrsqd_f2)
+dfrsqd_f$City<-as.factor(dfrsqd_f$City)
+```
+
+
+```{r fig.align="center", out.width="40%", echo=FALSE}
+plot(dfrsqd_f2[,1],type="l",ylim=c(0,100),ylab="R Squared %", xlab="No. of Basis Functions")
+for (i in 1:dim(dfrsqd_f2)[2]) {
+  lines(dfrsqd_f2[,i],col=i)
+}
+```
+
+```{r include=FALSE}
+# Using the polynomial basis functions up to degree 18
+days<-1:365
+days<-(days-min(days))/(diff(range(days))) # rescaling to [0,1]
+phi<-poly(days,degree=18)
+dim(phi)
+
+for (i in 1:dim(da)[2]){
+  # estimation of the theta parameters for Vancouver
+  m.i<-lm(da[,i]~phi)
+  summary(m.i)
+  
+  # plot of fitted function
+  #plot(1:365,da[,i],main=colnames(da)[i],"(m=10)", xlab="day", ylab="precipitation (mm/day)")
+  #lines(1:365,m.i$fitted.values,type="l", col=2)
+  
+  if (i==1){
+    dfrow <- data.frame(City=colnames(da)[i],t(m.i$coefficients))  
+    dfcol <- data.frame(m.i$coefficients)  
+#    dfrsqd <- data.frame(City=colnames(da)[i],R2=summary(m.i)$r.squared*100)
+  }else {
+    dfrow<-rbind(dfrow,data.frame(City=colnames(da)[i],t(m.i$coefficients))) 
+    dfcol<-cbind(dfcol,data.frame(m.i$coefficients)) 
+#    dfrsqd <-rbind(dfrsqd,data.frame(City=colnames(da)[i],summary(m.i)$r.squared*100))
+  }
+}
+colnames(dfcol)=colnames(da)
+```
+
+###Multidimensional Scaling
+The estimates for all cities are collected into a single new $35 \times (18+1)$ data matrix $\boldsymbol{\Theta}$ which contains all information on the shape of the precipitation functions. After column centering, the truncated SVD of $\boldsymbol{\Theta}$ is given as: 
+\[
+   \boldsymbol{\Theta}_k = \boldsymbol{U}_k\boldsymbol{D}_k\boldsymbol{V}_k^t
+\]
+```{r echo=FALSE}
+theta<-dfrow[,-1]#Using the data bigtheta (dfrow)
+t<-as.data.frame(t(apply(theta,2,mean))) #mean of original theta 1x(18+1) matrix
+x_orig<-as.data.frame(cbind((matrix(1,nrow=365,ncol=1)),as.matrix(phi))) #Xphi with intercept 365x(18+1) matrix
+tX<-as.matrix(t)%*%t(as.matrix(x_orig)) #newmean data to replace ybar for smooth curve
+```
+```{r}
+n<-nrow(theta) 
+H<-diag(n)-(1/n)*matrix(1,ncol=n,nrow=n) 
+theta[,]<-H%*%as.matrix(theta)  #column centering
+theta.svd<-svd(theta) 
+k<-2 
+Uk<-theta.svd$u[,1:k] 
+Dk<-diag(theta.svd$d[1:k]) 
+Vk<-theta.svd$v[,1:k] 
+thetak<-Uk%*%Dk%*%t(Vk)
+Zk<-Uk%*%Dk 
+```
+
+```{r eval=FALSE}
+plot(Zk,type="n",xlab="Z1",ylab="Z2", xlim=c(-50,25)) 
+text(Zk,abbr,cex=0.7,col=as.integer(MetaData$region))
+legend("topright", legend=unique(MetaData$region),pch=1,col=unique(MetaData$region), cex=0.7)
+```
+```{r fig.align="center", out.width="50%", echo=FALSE}
+#MDS Plot
+rownames(Zk)<-dfrow[,1]
+abbr=abbreviate(rownames(Zk))
+
+plot(Zk,type="n",xlab="Z1",ylab="Z2", xlim=c(-50,25)) 
+text(Zk,abbr,cex=0.7,col=as.integer(MetaData$region))
+legend("topright", legend=unique(MetaData$region),pch=1,col=unique(MetaData$region),
+       cex=0.7)
+```
+
+Comparing the above plot to the geographical map of Canada, it can be generally seen that the patterns of cities on the precipitation MDS plot loosely correspond to their geographical locations. This is mostly evident by the fact that cities that are geographically closer together seem to be clustered more closely together, as shown by the regional color coding on the plot. However, there is some mixture within regions as well, mainly visible by clustering between coastal cities and those that are more inland. The first grouping of cities on the plot, those with lower scores on the Z1 axis, are mostly all coastal. These include Pr. Rupert, Victoria, Vancouver, Charlottesville, Yarmouth, Sydney, Halifax and St. John's. The furthest cluster along the Z1 axis includes cities that are the furthest inland geographically, including Winnipeg, Calgary, Regina, Pr. Albert and Edmonton. This suggests that geographic factors play a major role in explaining precipitation patterns between the cities, specifically their proximity to the coastline. The cities that lie within the arctic region seem to display a similar rainfall pattern to the non-coastal cities, despite their proximity to a coastline. This is to be expected however, as this region is known to exhibit low precipitation patterns.
+The variation on the Z2 axis is fairly minimal. However, it can be seen that the closer to zero a city is on this axis, the more inland it is (farther from the North Pacific Ocean), and thus has lower precipitation. In general, cities with lower Z1 scores and very high or very low Z2 scores are located along the pacific coastline in Western canada. These cities seem to experience the highest precipitation among all cities in Canada all year round.
+
+
+###Biplots
+
+After substituting $\boldsymbol{\Theta}$ with its truncated SVD (after $k$ terms) and adding column means as part of backtransformation, we get the model fit:
+\[
+  \hat{\boldsymbol{Y}}_k = \boldsymbol{\Theta}_k \boldsymbol{X}^t + \bar{Y} = \boldsymbol{U}_k\boldsymbol{D}_k\boldsymbol{V}_k^t\boldsymbol{X}^t + \bar{Y}  =\boldsymbol{Z}_k\boldsymbol{V}_k^t\boldsymbol{X}^t + \bar{Y} .
+\]
+The latter expression relates an approximate model fit ($\hat{\boldsymbol{Y}}_k$) for the complete data set of $35$ cities to the scores of the SVD ($\boldsymbol{Z}_k$) and the loadings ($\boldsymbol{V}_k$). The relation is established through the matrix $\boldsymbol{X}$ which was used to relate the basis functions to the $\theta$-parameters. 
+
+
+
+
+
+
+
+```{r eval=FALSE}
+t<-as.data.frame(t(apply(theta,2,mean))) #mean of original theta 1x(18+1) matrix
+x_orig<-as.data.frame(cbind((matrix(1,nrow=365,ncol=1)),as.matrix(phi))) #Xphi with intercept 365x(18+1) matrix
+tX<-as.matrix(t)%*%t(as.matrix(x_orig)) #newmean data to replace ybar for smooth curve
+Zmax1<-(max(Zk[,1])) %*% t(Vk[,1]) %*% t(x_orig)+tX #Z1 is at maximum
+Zmin1<-(min(Zk[,1])) %*% t(Vk[,1]) %*% t(x_orig)+tX #Z1 is at minimum
+Zmax2<-(max(Zk[,2])) %*% t(Vk[,2]) %*% t(x_orig)+tX #Z2 is at maximum
+Zmin2<-(min(Zk[,2])) %*% t(Vk[,2]) %*% t(x_orig)+tX #Z2 is at minimum
+#Plot function
+plot(days, tX,type='l', ylim=c(-1,15),ylab="Precipitation(in mm)", xlab="Days", main="Precipitation Level (based on Z1 Scores)")
+lines(days, Zmaxi, col=j) #color j refers to the jth city with maximum Zi score, change i and j
+lines(days, Zmini), col=k) #color k refers to the kth city with maximum Zi score, change i and j
+```
+
+```{r include=FALSE}
+###########################################################
+############Backtransformation and Biplots ################
+###########################################################
+
+
+#Y average per day 35x365 matrix
+data2<-as.data.frame(t(da))
+str(data2)
+ybar<-as.data.frame(t(apply(data2,2,mean)))
+str(ybar)
+for (i in 2:dim(data2)[1]){
+  ybar<-rbind(ybar,as.data.frame(t(apply(data2,2,mean))))
+}
+dim(ybar)
+View(ybar)
+ybarm<-as.matrix(ybar)
+str(ybarm)
+
+str(phi)    #365x18 matrix
+str(theta)  #35x19 matrix
+
+#using the new tX matrix
+tXnew = tX
+for (i in 2:dim(data2)[1]){
+  tXnew<-rbind(tXnew,tX)
+}
+str(tXnew)
+View(tXnew)
+tXnewm<-as.matrix(tXnew)
+str(tXnewm)
+#i need to get the matrix X (m+1)xp!!!!
+#Y=THETA*transpose(X)
+#Apply biplot in Y!!!
+x_1<-matrix(1,nrow=365,ncol=1)
+x_orig<-as.data.frame(cbind(x_1,as.matrix(phi)))
+str(x_orig)
+
+#backtransform!!!! yhat = thetacentered*transpose(X) + tXnew (replacing Ybar(old)) 
+y_new<-as.matrix(theta)%*%t(as.matrix(x_orig)) + tXnew #+ybarm
+str(y_new)
+head(y_new)
+#same as:::
+#backtransform with truncated SVD k=2: yhat = Zk*transpose(Vk)*transpose(X) + tXnew (replacing Ybar(old)) 
+y_new2<-Zk%*%t(Vk)%*%t(as.matrix(x_orig))+ tXnew #+ybarm
+str(y_new)
+head(y_new)
+
+
+########################
+########Z1 Plot#########
+
+View(Zk)
+
+y_z1<-Zk[,1]%*%t(Vk[,1])%*%t(as.matrix(x_orig))+tXnewm
+#str(y_z1)
+#head(y_z1)
+#precip(y_z1)
+
+  yhat<-as.data.frame(y_z1)
+  #str(yhat)
+  rownames(yhat)<-colnames(da)
+  #head(yhat)  
+  
+  yhatm<-as.data.frame(t(yhat))
+  #str(yhatm)
+```  
+```{r fig.align="center", out.width="50%", echo=FALSE}
+  plot(yhatm[,1],type="n",ylim=c(-1,15),ylab="Precipitation(in mm)", xlab="Days", main="Precipitation Level (based on Z1 Scores)")
+  for (i in c(23,29)) {
+    lines(yhatm[,i],col=i,lwd=5)
+  }
+  yave<-as.data.frame(t(tX))
+  #str(yave)
+  lines(yave,col=1,lwd=5)
+  legend("topright", lty=1, col=c(23,29,1), legend=c("Edmonton","Prince Rupert","Average Precipitation"))
+```
+
+
+The above plot seems to show that Z1 picks up the differences in variability of precipitation between the different seasons of the year. In general, cities with high Z1 scores have low precipitation. Particularly, we see the highest variability as well as the highest levels of precipitation in the winter months, and very little variability during summer. Prince Rupert shows the greatest changes in precipitation over the year, with levels peaking over the winter season and falling just below average in summer. Edmonton shows a more consistent pattern across the year and is closer to average levels, however it exhibits slightly lower than average precipitation during winter. 
+
+```{r echo=FALSE}
+########################
+########Z2 Plot#########
+y_z2<-Zk[,2]%*%t(Vk[,2])%*%t(as.matrix(x_orig))+tXnewm
+#str(y_z2)
+#head(y_z2)
+#precip(y_z2)
+yhat<-as.data.frame(y_z2)
+#str(yhat)
+rownames(yhat)<-colnames(da)
+#head(yhat)  
+yhatm<-as.data.frame(t(yhat))
+#str(yhatm)
+```
+
+```{r fig.align="center", out.width="50%", echo=FALSE}
+plot(yhatm[,1],type="n",ylim=c(-2,15),ylab="Precipitation(in mm)", xlab="Days", main="Precipitation Level (based on Z2 Scores)")
+for (i in c(27,29)) {
+  lines(yhatm[,i],col=i,lwd=5)
+  #text(rownames(Zk)[i],col=i) not working!!!!
+}
+yave<-as.data.frame(t(tX))
+#str(yave)
+lines(yave,col=1,lwd=5)
+legend("topright", lty=1, col=c(29,27,1), legend=c("Prince Rupert","Victoria","Average Precipitation"))
+```
+
+Based on the plot above, the Z2 axis shows the most amount of variability in precipitation around the end of summer and beginning of the autumn season. Around this time the two cities shown seem to exhibit opposing rainfall patterns. Prince Rupert shows the highest level of precipitation around the month of September, which is quite above average. However, Victoria's rainfall dips at this point and falls below the average level.
+
+As can be seen on the MDS plot shown previously, cities in the arctic region of the country have Z1 and Z2 scores close to zero. This means that they exhibit very little variation in precipitation across the year. Cities that are more inland show lower levels of rainfall in general. Further, Prince Rupert experiences significant seasonal variation in precipitation over the course of the year, and cities along the western pacific coastline exhibit the greatest amount of rainfall in the country.
+
+
+
+
